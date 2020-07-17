@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func open(app *config) {
+func open(app *Config) {
 
 	var proto string
 	if app.udp {
@@ -85,7 +85,7 @@ func open(app *config) {
 	log.Printf("aggregate writing: %d Mbps %d send/s", aggWriter.Mbps, aggWriter.Cps)
 }
 
-func spawnClient(app *config, wg *sync.WaitGroup, conn net.Conn, c, connections int, isTLS bool, aggReader, aggWriter *aggregate) {
+func spawnClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, connections int, isTLS bool, aggReader, aggWriter *aggregate) {
 	wg.Add(1)
 	go handleConnectionClient(app, wg, conn, c, connections, isTLS, aggReader, aggWriter)
 }
@@ -106,41 +106,41 @@ type ExportInfo struct {
 	Output ChartData
 }
 
-func sendOptions(app *config, conn io.Writer) error {
+func sendOptions(app *Config, conn io.Writer) error {
 	opt := app.opt
 	if app.udp {
 		var optBuf bytes.Buffer
 		enc := gob.NewEncoder(&optBuf)
 		if errOpt := enc.Encode(&opt); errOpt != nil {
-			log.Printf("handleConnectionClient: UDP options failure: %v", errOpt)
+			log.Printf("handleConnectionClient: UDP Options failure: %v", errOpt)
 			return errOpt
 		}
 		_, optWriteErr := conn.Write(optBuf.Bytes())
 		if optWriteErr != nil {
-			log.Printf("handleConnectionClient: UDP options write: %v", optWriteErr)
+			log.Printf("handleConnectionClient: UDP Options write: %v", optWriteErr)
 			return optWriteErr
 		}
 	} else {
 		enc := gob.NewEncoder(conn)
 		if errOpt := enc.Encode(&opt); errOpt != nil {
-			log.Printf("handleConnectionClient: TCP options failure: %v", errOpt)
+			log.Printf("handleConnectionClient: TCP Options failure: %v", errOpt)
 			return errOpt
 		}
 	}
 	return nil
 }
 
-func handleConnectionClient(app *config, wg *sync.WaitGroup, conn net.Conn, c, connections int, isTLS bool, aggReader, aggWriter *aggregate) {
+func handleConnectionClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, connections int, isTLS bool, aggReader, aggWriter *aggregate) {
 	defer wg.Done()
 
 	log.Printf("handleConnectionClient: starting %s %d/%d %v", protoLabel(isTLS), c, connections, conn.RemoteAddr())
 
-	// send options
+	// send Options
 	if errOpt := sendOptions(app, conn); errOpt != nil {
 		return
 	}
 	opt := app.opt
-	log.Printf("handleConnectionClient: options sent: %v", opt)
+	log.Printf("handleConnectionClient: Options sent: %v", opt)
 
 	// receive ack
 	//log.Printf("handleConnectionClient: FIXME WRITEME server does not send ack for UDP")
@@ -220,7 +220,7 @@ func handleConnectionClient(app *config, wg *sync.WaitGroup, conn net.Conn, c, c
 	log.Printf("handleConnectionClient: closing: %d/%d %v", c, connections, conn.RemoteAddr())
 }
 
-func clientReader(conn net.Conn, c, connections int, done chan struct{}, opt options, stat *ChartData, agg *aggregate) {
+func clientReader(conn net.Conn, c, connections int, done chan struct{}, opt Options, stat *ChartData, agg *aggregate) {
 	log.Printf("clientReader: starting: %d/%d %v", c, connections, conn.RemoteAddr())
 
 	connIndex := fmt.Sprintf("%d/%d", c, connections)
@@ -234,7 +234,7 @@ func clientReader(conn net.Conn, c, connections int, done chan struct{}, opt opt
 	log.Printf("clientReader: exiting: %d/%d %v", c, connections, conn.RemoteAddr())
 }
 
-func clientWriter(conn net.Conn, c, connections int, done chan struct{}, opt options, stat *ChartData, agg *aggregate) {
+func clientWriter(conn net.Conn, c, connections int, done chan struct{}, opt Options, stat *ChartData, agg *aggregate) {
 	log.Printf("clientWriter: starting: %d/%d %v", c, connections, conn.RemoteAddr())
 
 	connIndex := fmt.Sprintf("%d/%d", c, connections)

@@ -13,16 +13,16 @@ import (
 
 const version = "0.4"
 
-type hostList []string
+type HostList []string
 
-type config struct {
-	hosts          hostList
-	listeners      hostList
+type Config struct {
+	hosts          HostList
+	listeners      HostList
 	defaultPort    string
 	connections    int
 	reportInterval string
 	totalDuration  string
-	opt            options
+	opt            Options
 	passiveClient  bool // suppress client send
 	udp            bool
 	chart          string
@@ -35,11 +35,21 @@ type config struct {
 	localAddr      string
 }
 
-func (h *hostList) String() string {
+type Options struct {
+	ReportInterval time.Duration
+	TotalDuration  time.Duration
+	ReadSize       int
+	WriteSize      int
+	PassiveServer  bool              // suppress server send
+	MaxSpeed       float64           // mbps
+	Table          map[string]string // send optional information client->server
+}
+
+func (h *HostList) String() string {
 	return fmt.Sprint(*h)
 }
 
-func (h *hostList) Set(value string) error {
+func (h *HostList) Set(value string) error {
 	for _, hh := range strings.Split(value, ",") {
 		*h = append(*h, hh)
 	}
@@ -60,7 +70,7 @@ func badExportFilename(parameter, filename string) error {
 
 func main() {
 
-	app := config{}
+	app := Config{}
 
 	flag.Var(&app.hosts, "hosts", "comma-separated list of hosts\nyou may append an optional port to every host: host[:port]")
 	flag.Var(&app.listeners, "listeners", "comma-separated list of listen addresses\nyou may prepend an optional host to every port: [host]:port")
