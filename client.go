@@ -191,7 +191,7 @@ func handleConnectionClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, c
 	if app.csv != "" {
 		filename := fmt.Sprintf(app.csv, c, conn.RemoteAddr())
 		log.Printf("exporting CSV test results to: %s", filename)
-		errExport := exportCsv(filename, &info)
+		errExport := ExportCsv(filename, &info)
 		if errExport != nil {
 			log.Printf("handleConnectionClient: export CSV: %s: %v", filename, errExport)
 		}

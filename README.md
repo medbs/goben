@@ -64,9 +64,12 @@ Start server:
 
     server$ goben
 
+   
 Start client:
 
     client$ goben -hosts 1.1.1.1 ;# 1.1.1.1 is server's address
+    
+   
 
 # Command-line Options
 

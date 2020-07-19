@@ -13,7 +13,7 @@ const (
 	Rate = 2 // Rate
 )
 
-func exportCsv(filename string, info *ExportInfo) error {
+func ExportCsv(filename string, info *ExportInfo) error {
 
 	out, errCreate := os.Create(filename)
 	if errCreate != nil {
