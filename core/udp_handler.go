@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"bytes"
@@ -43,7 +43,7 @@ func handleUDP(app *Config, wg *sync.WaitGroup, conn *net.UDPConn) {
 
 	tab := map[string]*udpInfo{}
 
-	buf := make([]byte, app.opt.ReadSize)
+	buf := make([]byte, app.Opt.ReadSize)
 
 	var aggReader aggregate
 	var aggWriter aggregate

@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"log"
@@ -6,22 +6,22 @@ import (
 	"sync"
 )
 
-func serve(app *Config) {
+func Serve(app *Config) {
 
-	if app.tls && !fileExists(app.tlsKey) {
-		log.Printf("key file not found: %s - disabling TLS", app.tlsKey)
-		app.tls = false
+	if app.Tls && !fileExists(app.TlsKey) {
+		log.Printf("key file not found: %s - disabling TLS", app.TlsKey)
+		app.Tls = false
 	}
 
-	if app.tls && !fileExists(app.tlsCert) {
-		log.Printf("cert file not found: %s - disabling TLS", app.tlsCert)
-		app.tls = false
+	if app.Tls && !fileExists(app.TlsCert) {
+		log.Printf("cert file not found: %s - disabling TLS", app.TlsCert)
+		app.Tls = false
 	}
 
 	var wg sync.WaitGroup
 
-	for _, h := range app.listeners {
-		hh := appendPortIfMissing(h, app.defaultPort)
+	for _, h := range app.Listeners {
+		hh := appendPortIfMissing(h, app.DefaultPort)
 		ListenTCP(app, &wg, hh)
 		ListenUDP(app, &wg, hh)
 	}

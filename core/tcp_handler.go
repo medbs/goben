@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"crypto/tls"
@@ -11,10 +11,10 @@ import (
 )
 
 func ListenTCP(app *Config, wg *sync.WaitGroup, h string) {
-	log.Printf("listenTCP: TLS=%v spawning TCP listener: %s", app.tls, h)
+	log.Printf("listenTCP: TLS=%v spawning TCP listener: %s", app.Tls, h)
 
 	// first try TLS
-	if app.tls {
+	if app.Tls {
 		listener, errTLS := listenTLS(app, h)
 		if errTLS == nil {
 			spawnAcceptLoopTCP(app, wg, listener, true)
@@ -26,7 +26,7 @@ func ListenTCP(app *Config, wg *sync.WaitGroup, h string) {
 
 	listener, errListen := net.Listen("tcp", h)
 	if errListen != nil {
-		log.Printf("listenTCP: TLS=%v %s: %v", app.tls, h, errListen)
+		log.Printf("listenTCP: TLS=%v %s: %v", app.Tls, h, errListen)
 		return
 	}
 	spawnAcceptLoopTCP(app, wg, listener, false)
@@ -38,10 +38,10 @@ func spawnAcceptLoopTCP(app *Config, wg *sync.WaitGroup, listener net.Listener, 
 }
 
 func listenTLS(app *Config, h string) (net.Listener, error) {
-	cert, errCert := tls.LoadX509KeyPair(app.tlsCert, app.tlsKey)
+	cert, errCert := tls.LoadX509KeyPair(app.TlsCert, app.TlsKey)
 	if errCert != nil {
 		log.Printf("listenTLS: failure loading TLS key pair: %v", errCert)
-		app.tls = false // disable TLS
+		app.Tls = false // disable TLS
 		return nil, errCert
 	}
 
