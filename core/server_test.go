@@ -1,7 +1,6 @@
-package main
+package core
 
 import (
-	"github.com/udhos/goben/core"
 	"testing"
 )
 
@@ -24,7 +23,7 @@ func TestAppendPort(t *testing.T) {
 }
 
 func expectAppendPort(t *testing.T, host, port, wanted string) {
-	result := core.appendPortIfMissing(host, port)
+	result := appendPortIfMissing(host, port)
 	if result != wanted {
 		t.Errorf("expectAppendPort: host=%s port=%s result=%s wanted=%s",
 			host, port, result, wanted)
