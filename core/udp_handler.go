@@ -102,7 +102,7 @@ func handleUDP(app *Config, wg *sync.WaitGroup, conn *net.UDPConn) {
 		}
 
 		// account read from UDP socket
-		info.acc.update(n, info.opt.ReportInterval, connIndex, "handleUDP", "rcv/s", nil)
+		info.acc.update(n, info.opt.ReportInterval, connIndex, "handleUDP", "rcv/s")
 	}
 }
 
@@ -124,7 +124,7 @@ func serverWriterTo(conn *net.UDPConn, opt Options, dst net.Addr, acc *account, 
 
 	buf := randBuf(opt.WriteSize)
 
-	workLoop(connIndex, "serverWriterTo", "snd/s", udpWriteTo, buf, opt.ReportInterval, opt.MaxSpeed, nil, agg)
+	workLoop(connIndex, "serverWriterTo", "snd/s", udpWriteTo, buf, opt.ReportInterval, opt.MaxSpeed, nil)
 
 	log.Printf("serverWriterTo: exiting: %v", dst)
 }

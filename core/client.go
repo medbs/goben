@@ -9,7 +9,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -100,11 +99,6 @@ func tlsDial(dialer net.Dialer, proto, h string) (net.Conn, error) {
 	return conn, err
 }
 
-// ExportInfo records data for export
-type ExportInfo struct {
-	Input  ChartData
-	Output ChartData
-}
 
 func sendOptions(app *Config, conn io.Writer) error {
 	opt := app.Opt
@@ -156,22 +150,10 @@ func handleConnectionClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, c
 	doneReader := make(chan struct{})
 	doneWriter := make(chan struct{})
 
-	info := ExportInfo{
-		Input:  ChartData{},
-		Output: ChartData{},
-	}
 
-	var input *ChartData
-	var output *ChartData
-
-	if app.Csv != "" || app.Export != "" || app.Chart != "" || app.Ascii {
-		input = &info.Input
-		output = &info.Output
-	}
-
-	go clientReader(conn, c, connections, doneReader, opt, input, aggReader)
+	go clientReader(conn, c, connections, doneReader, opt, aggReader)
 	if !app.PassiveClient {
-		go clientWriter(conn, c, connections, doneWriter, opt, output, aggWriter)
+		go clientWriter(conn, c, connections, doneWriter, opt, aggWriter)
 	}
 
 	tickerPeriod := time.NewTimer(app.Opt.TotalDuration)
@@ -188,60 +170,31 @@ func handleConnectionClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, c
 		<-doneWriter // wait writer exit
 	}
 
-	if app.Csv != "" {
-		filename := fmt.Sprintf(app.Csv, c, conn.RemoteAddr())
-		log.Printf("exporting CSV test results to: %s", filename)
-		errExport := ExportCsv(filename, &info)
-		if errExport != nil {
-			log.Printf("handleConnectionClient: export CSV: %s: %v", filename, errExport)
-		}
-	}
-
-	if app.Export != "" {
-		filename := fmt.Sprintf(app.Export, c, conn.RemoteAddr())
-		log.Printf("exporting YAML test results to: %s", filename)
-		errExport := export(filename, &info)
-		if errExport != nil {
-			log.Printf("handleConnectionClient: export YAML: %s: %v", filename, errExport)
-		}
-	}
-
-	if app.Chart != "" {
-		filename := fmt.Sprintf(app.Chart, c, conn.RemoteAddr())
-		log.Printf("rendering chart to: %s", filename)
-		errRender := chartRender(filename, &info.Input, &info.Output)
-		if errRender != nil {
-			log.Printf("handleConnectionClient: render PNG: %s: %v", filename, errRender)
-		}
-	}
-
-	plotascii(&info, conn.RemoteAddr().String(), c)
-
 	log.Printf("handleConnectionClient: closing: %d/%d %v", c, connections, conn.RemoteAddr())
 }
 
-func clientReader(conn net.Conn, c, connections int, done chan struct{}, opt Options, stat *ChartData, agg *aggregate) {
+func clientReader(conn net.Conn, c, connections int, done chan struct{}, opt Options, agg *aggregate) {
 	log.Printf("clientReader: starting: %d/%d %v", c, connections, conn.RemoteAddr())
 
 	connIndex := fmt.Sprintf("%d/%d", c, connections)
 
 	buf := make([]byte, opt.ReadSize)
 
-	workLoop(connIndex, "clientReader", "rcv/s", conn.Read, buf, opt.ReportInterval, 0, stat, agg)
+	workLoop(connIndex, "clientReader", "rcv/s", conn.Read, buf, opt.ReportInterval, 0, agg)
 
 	close(done)
 
 	log.Printf("clientReader: exiting: %d/%d %v", c, connections, conn.RemoteAddr())
 }
 
-func clientWriter(conn net.Conn, c, connections int, done chan struct{}, opt Options, stat *ChartData, agg *aggregate) {
+func clientWriter(conn net.Conn, c, connections int, done chan struct{}, opt Options, agg *aggregate) {
 	log.Printf("clientWriter: starting: %d/%d %v", c, connections, conn.RemoteAddr())
 
 	connIndex := fmt.Sprintf("%d/%d", c, connections)
 
 	buf := randBuf(opt.WriteSize)
 
-	workLoop(connIndex, "clientWriter", "snd/s", conn.Write, buf, opt.ReportInterval, opt.MaxSpeed, stat, agg)
+	workLoop(connIndex, "clientWriter", "snd/s", conn.Write, buf, opt.ReportInterval, opt.MaxSpeed, agg)
 
 	close(done)
 
@@ -266,15 +219,9 @@ type account struct {
 	calls     int
 }
 
-// ChartData records data for chart
-type ChartData struct {
-	XValues []time.Time
-	YValues []float64
-}
-
 const fmtReport = "%s %7s %14s rate: %6d Mbps %6d %s"
 
-func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string, stat *ChartData) {
+func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string) {
 	a.calls++
 	a.size += int64(n)
 
@@ -289,11 +236,7 @@ func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLa
 		a.prevSize = a.size
 		a.prevCalls = a.calls
 
-		// save chart data
-		if stat != nil {
-			stat.XValues = append(stat.XValues, now)
-			stat.YValues = append(stat.YValues, mbps)
-		}
+		log.Printf("zboub")
 	}
 }
 
@@ -313,36 +256,4 @@ func (a *account) average(start time.Time, conn, label, cpsLabel string, agg *ag
 	agg.Mbps += mbps
 	agg.Cps += cps
 	agg.mutex.Unlock()
-}
-
-func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval time.Duration, maxSpeed float64, stat *ChartData, agg *aggregate) {
-
-	start := time.Now()
-	acc := &account{}
-	acc.prevTime = start
-
-	for {
-		runtime.Gosched()
-
-		if maxSpeed > 0 {
-			elapSec := time.Since(acc.prevTime).Seconds()
-			if elapSec > 0 {
-				mbps := float64(8*(acc.size-acc.prevSize)) / (1000000 * elapSec)
-				if mbps > maxSpeed {
-					time.Sleep(time.Millisecond)
-					continue
-				}
-			}
-		}
-
-		n, errCall := f(buf)
-		if errCall != nil {
-			log.Printf("workLoop: %s %s: %v", conn, label, errCall)
-			break
-		}
-
-		acc.update(n, reportInterval, conn, label, cpsLabel, stat)
-	}
-
-	acc.average(start, conn, label, cpsLabel, agg)
 }
