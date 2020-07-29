@@ -114,7 +114,7 @@ func serverReader(conn net.Conn, opt Options, c, connections int, isTLS bool, ag
 
 	buf := make([]byte, opt.ReadSize)
 
-	workLoop(connIndex, "serverReader", "rcv/s", conn.Read, buf, opt.ReportInterval, 0, nil)
+	workLoop(connIndex, "serverReader", "rcv/s", conn.Read, buf, opt.ReportInterval, 0, agg)
 
 	log.Printf("serverReader: exiting: %v", conn.RemoteAddr())
 }
@@ -129,7 +129,7 @@ func serverWriter(conn net.Conn, opt Options, c, connections int, isTLS bool, ag
 
 	buf := randBuf(opt.WriteSize)
 
-	workLoop(connIndex, "serverWriter", "snd/s", conn.Write, buf, opt.ReportInterval, opt.MaxSpeed, nil)
+	workLoop(connIndex, "serverWriter", "snd/s", conn.Write, buf, opt.ReportInterval, opt.MaxSpeed, agg)
 
 	log.Printf("serverWriter: exiting: %v", conn.RemoteAddr())
 }

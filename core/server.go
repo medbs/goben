@@ -20,11 +20,10 @@ func Serve(app *Config) {
 
 	var wg sync.WaitGroup
 
-	for _, h := range app.Listeners {
-		hh := appendPortIfMissing(h, app.DefaultPort)
+		hh := appendPortIfMissing(app.Listener, app.DefaultPort)
 		ListenTCP(app, &wg, hh)
 		ListenUDP(app, &wg, hh)
-	}
+
 
 	wg.Wait()
 }

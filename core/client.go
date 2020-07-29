@@ -13,6 +13,26 @@ import (
 	"time"
 )
 
+const fmtReport = "%s %7s %14s rate: %6d Mbps %6d %s"
+
+type aggregate struct {
+	Mbps  int64 // Megabit/s
+	Cps   int64 // Call/s
+	mutex sync.Mutex
+}
+
+type call func(p []byte) (n int, err error)
+
+type account struct {
+	prevTime  time.Time
+	prevSize  int64
+	prevCalls int
+	size      int64
+	calls     int
+}
+
+
+
 func Open(app *Config) {
 
 	var proto string
@@ -46,9 +66,9 @@ func Open(app *Config) {
 		log.Printf("open: localAddr: %s", dialer.LocalAddr)
 	}
 
-	for _, h := range app.Hosts {
 
-		hh := appendPortIfMissing(h, app.DefaultPort)
+
+		hh := appendPortIfMissing(app.Host, app.DefaultPort)
 
 		for i := 0; i < app.Connections; i++ {
 
@@ -76,7 +96,7 @@ func Open(app *Config) {
 			}
 			spawnClient(app, &wg, conn, i, app.Connections, false, &aggReader, &aggWriter)
 		}
-	}
+
 
 	wg.Wait()
 
@@ -98,7 +118,6 @@ func tlsDial(dialer net.Dialer, proto, h string) (net.Conn, error) {
 
 	return conn, err
 }
-
 
 func sendOptions(app *Config, conn io.Writer) error {
 	opt := app.Opt
@@ -149,7 +168,6 @@ func handleConnectionClient(app *Config, wg *sync.WaitGroup, conn net.Conn, c, c
 
 	doneReader := make(chan struct{})
 	doneWriter := make(chan struct{})
-
 
 	go clientReader(conn, c, connections, doneReader, opt, aggReader)
 	if !app.PassiveClient {
@@ -209,51 +227,5 @@ func randBuf(size int) []byte {
 	return buf
 }
 
-type call func(p []byte) (n int, err error)
 
-type account struct {
-	prevTime  time.Time
-	prevSize  int64
-	prevCalls int
-	size      int64
-	calls     int
-}
 
-const fmtReport = "%s %7s %14s rate: %6d Mbps %6d %s"
-
-func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string) {
-	a.calls++
-	a.size += int64(n)
-
-	now := time.Now()
-	elap := now.Sub(a.prevTime)
-	if elap > reportInterval {
-		elapSec := elap.Seconds()
-		mbps := float64(8*(a.size-a.prevSize)) / (1000000 * elapSec)
-		cps := int64(float64(a.calls-a.prevCalls) / elapSec)
-		log.Printf(fmtReport, conn, "report", label, int64(mbps), cps, cpsLabel)
-		a.prevTime = now
-		a.prevSize = a.size
-		a.prevCalls = a.calls
-
-		log.Printf("zboub")
-	}
-}
-
-type aggregate struct {
-	Mbps  int64 // Megabit/s
-	Cps   int64 // Call/s
-	mutex sync.Mutex
-}
-
-func (a *account) average(start time.Time, conn, label, cpsLabel string, agg *aggregate) {
-	elapSec := time.Since(start).Seconds()
-	mbps := int64(float64(8*a.size) / (1000000 * elapSec))
-	cps := int64(float64(a.calls) / elapSec)
-	log.Printf(fmtReport, conn, "average", label, mbps, cps, cpsLabel)
-
-	agg.mutex.Lock()
-	agg.Mbps += mbps
-	agg.Cps += cps
-	agg.mutex.Unlock()
-}

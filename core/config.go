@@ -12,8 +12,8 @@ const Version = "0.4"
 type HostList []string
 
 type Config struct {
-	Hosts          HostList
-	Listeners      HostList
+	Host           string
+	Listener       string
 	DefaultPort    string
 	Connections    int
 	ReportInterval string
@@ -21,10 +21,6 @@ type Config struct {
 	Opt            Options
 	PassiveClient  bool // suppress client send
 	Udp            bool
-	Chart          string
-	Export         string
-	Csv            string
-	Ascii          bool // plot ascii chart
 	TlsCert        string
 	TlsKey         string
 	Tls            bool
