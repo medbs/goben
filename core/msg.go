@@ -15,7 +15,7 @@ type ack struct {
 	Table map[string]string // send optional information server->client
 }
 
-const ackMagic = "goben-ack"
+const ackMagic = "ack"
 
 func newAck() ack {
 	return ack{Magic: ackMagic}
