@@ -13,7 +13,7 @@ func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval t
 	acc.prevTime = start
 
 	var minMbps float64 = 50000
-	var maxMbps float64 = 0
+	var maxMbps float64 = 1
 
 
 	for {
@@ -38,13 +38,14 @@ func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval t
 
 		mbps:= acc.update(n, reportInterval, conn, label, cpsLabel)
 
+		if mbps > maxMbps {
+			maxMbps = mbps
+		}
+
 		if mbps < minMbps {
 			minMbps = mbps
 		}
 
-		if mbps > maxMbps {
-			maxMbps = mbps
-		}
 	}
 
 	avgMbps:= acc.average(start, conn, label, cpsLabel, agg)
@@ -55,7 +56,7 @@ func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval t
 func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string) (mbps float64) {
 	a.calls++
 	a.size += int64(n)
-	var megaBytesPerSec float64
+	var megaBytesPerSec float64 = 0
 
 	now := time.Now()
 	elap := now.Sub(a.prevTime)
