@@ -6,11 +6,15 @@ import (
 	"time"
 )
 
-func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval time.Duration, maxSpeed float64, agg *aggregate) {
+func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval time.Duration, maxSpeed float64, agg *aggregate) (minMbPerSec float64, maxMbPerSec float64, avgMbPerSec int64) {
 
 	start := time.Now()
 	acc := &account{}
 	acc.prevTime = start
+
+	var minMbps float64 = 50000
+	var maxMbps float64 = 0
+
 
 	for {
 		runtime.Gosched()
@@ -32,15 +36,26 @@ func workLoop(conn, label, cpsLabel string, f call, buf []byte, reportInterval t
 			break
 		}
 
-		acc.update(n, reportInterval, conn, label, cpsLabel)
+		mbps:= acc.update(n, reportInterval, conn, label, cpsLabel)
+
+		if mbps < minMbps {
+			minMbps = mbps
+		}
+
+		if mbps > maxMbps {
+			maxMbps = mbps
+		}
 	}
 
-	acc.average(start, conn, label, cpsLabel, agg)
+	avgMbps:= acc.average(start, conn, label, cpsLabel, agg)
+
+	return minMbps,maxMbps,avgMbps
 }
 
-func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string) {
+func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLabel string) (mbps float64) {
 	a.calls++
 	a.size += int64(n)
+	var megaBytesPerSec float64
 
 	now := time.Now()
 	elap := now.Sub(a.prevTime)
@@ -52,12 +67,13 @@ func (a *account) update(n int, reportInterval time.Duration, conn, label, cpsLa
 		a.prevTime = now
 		a.prevSize = a.size
 		a.prevCalls = a.calls
+		megaBytesPerSec = mbps
 
-		log.Printf("zboub")
 	}
+	return megaBytesPerSec
 }
 
-func (a *account) average(start time.Time, conn, label, cpsLabel string, agg *aggregate) {
+func (a *account) average(start time.Time, conn, label, cpsLabel string, agg *aggregate) (avgMbPerSec int64){
 	elapSec := time.Since(start).Seconds()
 	mbps := int64(float64(8*a.size) / (1000000 * elapSec))
 	cps := int64(float64(a.calls) / elapSec)
@@ -67,4 +83,6 @@ func (a *account) average(start time.Time, conn, label, cpsLabel string, agg *ag
 	agg.Mbps += mbps
 	agg.Cps += cps
 	agg.mutex.Unlock()
+	return mbps
 }
+

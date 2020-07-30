@@ -15,6 +15,7 @@ import (
 
 const fmtReport = "%s %7s %14s rate: %6d Mbps %6d %s"
 
+//aggregate struct holds the total data for connectivity testing (mega bits per sec and number of call per sec)
 type aggregate struct {
 	Mbps  int64 // Megabit/s
 	Cps   int64 // Call/s
